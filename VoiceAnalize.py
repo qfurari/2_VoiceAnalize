@@ -196,12 +196,13 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
             amplitude = np.abs(audio_data)
 
             # 最大振幅を計算
-            max_amplitude = np.max(amplitude)
+            max_amplitude = int(np.max(amplitude))
             print("最大振幅値:", max_amplitude)
-
+            MAX = RTC.TimedShort(RTC.Time(0,0),max_amplitude)
             # 最大振幅をアウトポートに出力
-            self._d_VoiceMax.data = max_amplitude
-            self._VoiceMaxOut.write()
+            print(type(MAX))
+            #self._d_VoiceMax.data = MAX
+            self._VoiceMaxOut.write(MAX)
 
         return RTC.RTC_OK
     
