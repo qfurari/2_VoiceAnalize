@@ -10,8 +10,6 @@
 
 
 """
-import tempfile
-import os
 # </rtc-template>
 
 import sys
@@ -20,6 +18,7 @@ sys.path.append(".")
 
 # Import RTM module
 import RTC
+import numpy as np
 import OpenRTM_aist
 
 
@@ -35,12 +34,12 @@ import OpenRTM_aist
 
 # This module's spesification
 # <rtc-template block="module_spec">
-voiceanalize_spec = ["implementation_id", "VoiceAnalize", 
+analysis2_spec = ["implementation_id", "VoiceAnalize", 
          "type_name",         "VoiceAnalize", 
          "description",       "ModuleDescription", 
          "version",           "1.0.0", 
-         "vendor",            "TaigaKadoguchi", 
-         "category",          "Category", 
+         "vendor",            "VenderName", 
+         "category",          "test", 
          "activity_type",     "STATIC", 
          "max_instance",      "1", 
          "language",          "Python", 
@@ -55,7 +54,7 @@ voiceanalize_spec = ["implementation_id", "VoiceAnalize",
 # 
 # 
 # </rtc-template>
-class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
+class analysis2(OpenRTM_aist.DataFlowComponentBase):
 	
     ##
     # @brief constructor
@@ -64,15 +63,22 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
     def __init__(self, manager):
         OpenRTM_aist.DataFlowComponentBase.__init__(self, manager)
 
-        self._d_VoiceAnalize = OpenRTM_aist.instantiateDataType(RTC.TimedOctetSeq)
-        """
-        受け取ったwav型の音声ファイルの音の振幅を解析し、整数値で出力する。
-        """
-        self._VoiceAnalizeIn = OpenRTM_aist.InPort("VoiceAnalize", self._d_VoiceAnalize)
-        self._d_VoiceMax = OpenRTM_aist.instantiateDataType(RTC.TimedShort)
+        self._d_Now_voice = OpenRTM_aist.instantiateDataType(RTC.TimedOctetSeq)
         """
         """
-        self._VoiceMaxOut = OpenRTM_aist.OutPort("VoiceMax", self._d_VoiceMax)
+        self._Now_voiceIn = OpenRTM_aist.InPort("Now_voice", self._d_Now_voice)
+        self._d_save_voice = OpenRTM_aist.instantiateDataType(RTC.TimedOctetSeq)
+        """
+        """
+        self._save_voiceIn = OpenRTM_aist.InPort("save_voice", self._d_save_voice)
+        self._d_Now_analysis = OpenRTM_aist.instantiateDataType(RTC.TimedShort)
+        """
+        """
+        self._Now_analysisOut = OpenRTM_aist.OutPort("Now_analysis", self._d_Now_analysis)
+        self._d_sava_analysis = OpenRTM_aist.instantiateDataType(RTC.TimedShort)
+        """
+        """
+        self._sava_analysisOut = OpenRTM_aist.OutPort("sava_analysis", self._d_sava_analysis)
 
 
 		
@@ -96,10 +102,12 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
         # Bind variables and configuration variable
 		
         # Set InPort buffers
-        self.addInPort("VoiceAnalize",self._VoiceAnalizeIn)
+        self.addInPort("Now_voice",self._Now_voiceIn)
+        self.addInPort("save_voice",self._save_voiceIn)
 		
         # Set OutPort buffers
-        self.addOutPort("VoiceMax",self._VoiceMaxOut)
+        self.addOutPort("Now_analysis",self._Now_analysisOut)
+        self.addOutPort("sava_analysis",self._sava_analysisOut)
 		
         # Set service provider to Ports
 		
@@ -183,11 +191,9 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
     #
     #
     def onExecute(self, ec_id):
-        import numpy as np
-
-        # InPortから音声データを読み込む
-        if self._VoiceAnalizeIn.isNew():
-            data = self._VoiceAnalizeIn.read().data
+        if self._save_voiceIn.isNew():
+            print("----------------------resived save voice----------------------------")
+            data = self._save_voiceIn.read().data
 
             # バイト列からnumpy配列に変換
             audio_data = np.frombuffer(data, dtype=np.int16)
@@ -202,10 +208,18 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
             # 最大振幅をアウトポートに出力
             print(type(MAX))
             #self._d_VoiceMax.data = MAX
-            self._VoiceMaxOut.write(MAX)
+            self._sava_analysisOut.write(MAX)
+        if self._Now_voiceIn.isNew():
+            print("######### resived voice ###########")
+            now_data=self._Now_voiceIn.read().data
+            numpy_data = np.frombuffer(now_data, dtype=np.int16)
+            peak = int(np.abs(numpy_data).max())
+            print(f"ピーク振幅: {peak}", end='\r')
+            am_data = RTC.TimedShort(RTC.Time(0, 0), peak)
+            self._Now_analysisOut.write(am_data)
 
         return RTC.RTC_OK
-    
+	
     ###
     ##
     ## The aborting action when main logic error occurred.
@@ -275,14 +289,14 @@ class VoiceAnalize(OpenRTM_aist.DataFlowComponentBase):
 
 
 
-def VoiceAnalizeInit(manager):
-    profile = OpenRTM_aist.Properties(defaults_str=voiceanalize_spec)
+def analysis2Init(manager):
+    profile = OpenRTM_aist.Properties(defaults_str=analysis2_spec)
     manager.registerFactory(profile,
-                            VoiceAnalize,
+                            analysis2,
                             OpenRTM_aist.Delete)
 
 def MyModuleInit(manager):
-    VoiceAnalizeInit(manager)
+    analysis2Init(manager)
 
     # create instance_name option for createComponent()
     instance_name = [i for i in sys.argv if "--instance_name=" in i]
